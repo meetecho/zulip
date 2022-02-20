@@ -46,6 +46,11 @@ const social = {
 // We use this with override.
 let num_unread_for_stream;
 
+// flag to check if subheader is rendered
+let pinned_subheader_flag = false;
+let active_subheader_flag = false;
+let inactive_subheader_flag = false;
+
 function create_devel_sidebar_row({mock_template}) {
     const $devel_count = $.create("devel-count");
     const $subscription_block = $.create("devel-block");
@@ -84,6 +89,21 @@ function create_social_sidebar_row({mock_template}) {
     assert.equal($social_count.text(), "99");
 }
 
+function create_stream_subheader({mock_template}) {
+    mock_template("streams_subheader.hbs", false, (data) => {
+        if (data.subheader_name === "Pinned") {
+            pinned_subheader_flag = true;
+            return "<pinned-subheader-stub>";
+        } else if (data.subheader_name === "Active") {
+            active_subheader_flag = true;
+            return "<active-subheader-stub>";
+        }
+        // In case of inactive stream
+        inactive_subheader_flag = true;
+        return "<inactive-subheader-stub>";
+    });
+}
+
 function test_ui(label, f) {
     run_test(label, ({override, override_rewire, mock_template}) => {
         stream_data.clear_subscriptions();
@@ -103,8 +123,10 @@ test_ui("create_sidebar_row", ({override_rewire, mock_template}) => {
 
     create_devel_sidebar_row({mock_template});
     create_social_sidebar_row({mock_template});
+    create_stream_subheader({mock_template});
 
-    const split = '<hr class="stream-split">';
+    const $pinned_subheader = $("<pinned-subheader-stub>");
+    const $active_subheader = $("<active-subheader-stub>");
     const $devel_sidebar = $("<devel-sidebar-row-stub>");
     const $social_sidebar = $("<social-sidebar-row-stub>");
 
@@ -121,14 +143,16 @@ test_ui("create_sidebar_row", ({override_rewire, mock_template}) => {
     stream_list.build_stream_list();
 
     assert.ok(topic_list_cleared);
-
     const expected_elems = [
+        $pinned_subheader.html(), // separator
         $devel_sidebar, // pinned
-        split, // separator
+        $active_subheader.html(), // separator
         $social_sidebar, // not pinned
     ];
 
     assert.deepEqual(appended_elems, expected_elems);
+    assert.ok(pinned_subheader_flag);
+    assert.ok(active_subheader_flag);
 
     const $social_li = $("<social-sidebar-row-stub>");
     const stream_id = social.stream_id;
@@ -181,6 +205,7 @@ test_ui("pinned_streams_never_inactive", ({override_rewire, mock_template}) => {
 
     create_devel_sidebar_row({mock_template});
     create_social_sidebar_row({mock_template});
+    create_stream_subheader({mock_template});
 
     // non-pinned streams can be made inactive
     const $social_sidebar = $("<social-sidebar-row-stub>");
@@ -306,12 +331,12 @@ test_ui("zoom_in_and_zoom_out", () => {
         children: [elem($label1), elem($label2)],
     });
 
-    const $splitter = $.create("hr stub");
+    const $splitter = $.create("<active-subheader-stub>");
 
     $splitter.show();
     assert.ok($splitter.visible());
 
-    $.create(".stream-split", {
+    $.create(".streams_subheader", {
         children: [elem($splitter)],
     });
 
@@ -363,7 +388,8 @@ test_ui("zoom_in_and_zoom_out", () => {
     assert.ok($("#streams_list").hasClass("zoom-out"));
 });
 
-test_ui("narrowing", ({override_rewire}) => {
+test_ui("narrowing", ({override_rewire, mock_template}) => {
+    create_stream_subheader({mock_template});
     initialize_stream_data();
 
     topic_list.close = noop;
@@ -431,8 +457,13 @@ test_ui("focus_user_filter", ({override_rewire}) => {
     click_handler(e);
 });
 
-test_ui("sort_streams", ({override_rewire}) => {
+test_ui("sort_streams", ({override_rewire, mock_template}) => {
     override_rewire(scroll_util, "scroll_element_into_container", noop);
+    create_stream_subheader({mock_template});
+    // Set subheader flag to false
+    pinned_subheader_flag = false;
+    active_subheader_flag = false;
+    inactive_subheader_flag = false;
 
     // Get coverage on early-exit.
     stream_list.build_stream_list();
@@ -448,19 +479,25 @@ test_ui("sort_streams", ({override_rewire}) => {
 
     stream_list.build_stream_list();
 
-    const split = '<hr class="stream-split">';
+    const $pinned_subheader = $("<pinned-subheader-stub>");
+    const $active_subheader = $("<active-subheader-stub>");
+    const $inactive_subheader = $("<inactive-subheader-stub>");
     const expected_elems = [
+        $pinned_subheader.html(),
         $("<devel-sidebar-row-stub>"),
         $("<Rome-sidebar-row-stub>"),
         $("<test-sidebar-row-stub>"),
-        split,
+        $active_subheader.html(),
         $("<announce-sidebar-row-stub>"),
         $("<Denmark-sidebar-row-stub>"),
-        split,
+        $inactive_subheader.html(),
         $("<cars-sidebar-row-stub>"),
     ];
 
     assert.deepEqual(appended_elems, expected_elems);
+    assert.ok(pinned_subheader_flag);
+    assert.ok(active_subheader_flag);
+    assert.ok(inactive_subheader_flag);
 
     const streams = stream_sort.get_streams();
 
@@ -483,8 +520,12 @@ test_ui("sort_streams", ({override_rewire}) => {
     assert.ok(!stream_list.stream_sidebar.has_row_for(stream_id));
 });
 
-test_ui("separators_only_pinned_and_dormant", ({override_rewire}) => {
+test_ui("separators_only_pinned_and_dormant", ({override_rewire, mock_template}) => {
     // Test only pinned and dormant streams
+
+    create_stream_subheader({mock_template});
+    pinned_subheader_flag = false;
+    inactive_subheader_flag = false;
 
     // Get coverage on early-exit.
     stream_list.build_stream_list();
@@ -526,21 +567,26 @@ test_ui("separators_only_pinned_and_dormant", ({override_rewire}) => {
 
     stream_list.build_stream_list();
 
-    const split = '<hr class="stream-split">';
+    const $pinned_subheader = $("<pinned-subheader-stub>");
+    const $inactive_subheader = $("<inactive-subheader-stub>");
     const expected_elems = [
-        // pinned
+        $pinned_subheader.html(), // pinned
         $("<devel-sidebar-row-stub>"),
         $("<Rome-sidebar-row-stub>"),
-        split,
-        // dormant
+        $inactive_subheader.html(), // dormant
         $("<Denmark-sidebar-row-stub>"),
     ];
 
     assert.deepEqual(appended_elems, expected_elems);
+    assert.ok(pinned_subheader_flag);
+    assert.ok(inactive_subheader_flag);
 });
 
-test_ui("separators_only_pinned", () => {
+test_ui("separators_only_pinned", ({mock_template}) => {
     // Test only pinned streams
+
+    create_stream_subheader({mock_template});
+    pinned_subheader_flag = false;
 
     // Get coverage on early-exit.
     stream_list.build_stream_list();
@@ -570,20 +616,22 @@ test_ui("separators_only_pinned", () => {
     };
 
     stream_list.build_stream_list();
-
+    const $pinned_subheader = $("<pinned-subheader-stub>");
     const expected_elems = [
-        // pinned
+        $pinned_subheader.html(), // pinned
         $("<devel-sidebar-row-stub>"),
         $("<Rome-sidebar-row-stub>"),
         // no separator at the end as no stream follows
     ];
 
     assert.deepEqual(appended_elems, expected_elems);
+    assert.ok(pinned_subheader_flag);
 });
 
 narrow_state.active = () => false;
 
 test_ui("rename_stream", ({override_rewire, mock_template}) => {
+    create_stream_subheader({mock_template});
     initialize_stream_data();
 
     const sub = stream_data.get_sub_by_name("devel");
