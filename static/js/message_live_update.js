@@ -2,6 +2,7 @@ import * as message_list from "./message_list";
 import * as message_lists from "./message_lists";
 import * as message_store from "./message_store";
 import * as people from "./people";
+import {update_vote_text_on_message} from "./reactions";
 
 export function rerender_messages_view() {
     for (const list of [message_lists.home, message_list.narrowed]) {
@@ -10,6 +11,10 @@ export function rerender_messages_view() {
         }
         if (list.table_name !== undefined) {
             list.rerender_view();
+
+            for (const msg of list.data._items) {
+                update_vote_text_on_message(msg);
+            }
         }
     }
 }

@@ -42,7 +42,7 @@ export function current_user_has_reacted_to_emoji(message, local_id) {
     return r && r.user_ids.includes(page_params.user_id);
 }
 
-function get_message(message_id) {
+export function get_message(message_id) {
     const message = message_store.get(message_id);
     if (!message) {
         blueslip.error("reactions: Bad message id: " + message_id);
@@ -221,9 +221,10 @@ export function get_add_reaction_button(message_id) {
     return $add_button;
 }
 
-export function set_reaction_count($reaction, count) {
+export function set_reaction_vote_text($reaction, user_list, message) {
     const $count_element = $reaction.find(".message_reaction_count");
-    $count_element.text(count);
+    const vote_text = get_vote_text(user_list, message);
+    $count_element.text(vote_text);
 }
 
 export function add_reaction(event) {
@@ -250,11 +251,12 @@ export function add_reaction(event) {
 
     if (r) {
         r.user_ids.push(user_id);
-        update_user_fields(r);
+        update_user_fields(r, message);
     } else {
         message.clean_reactions.set(
             local_id,
             make_clean_reaction({
+                message,
                 local_id,
                 user_ids: [user_id],
                 reaction_type: event.reaction_type,
@@ -270,13 +272,26 @@ export function add_reaction(event) {
         emoji_name: event.emoji_name,
         emoji_code: event.emoji_code,
         user_id,
+        vote_text: undefined,
     };
 
     if (r) {
         opts.user_list = r.user_ids;
+        /*
+            setting vote_text here is not really required since it is
+            updated when we call `update_vote_text_on_message` later.
+            This is just to make sure we see the correct value inside
+            the node tests.
+        */
+        opts.vote_text = get_vote_text(opts.user_list, message);
+
         view.update_existing_reaction(opts);
+        update_vote_text_on_message(message);
     } else {
+        const vote_text = get_vote_text([user_id], message);
+        opts.vote_text = vote_text;
         view.insert_new_reaction(opts);
+        update_vote_text_on_message(message);
     }
 }
 
@@ -294,8 +309,6 @@ view.update_existing_reaction = function ({
     const local_id = get_local_reaction_id({reaction_type, emoji_code});
     const $reaction = find_reaction(message_id, local_id);
 
-    set_reaction_count($reaction, user_list.length);
-
     const new_label = generate_title(emoji_name, user_list);
     $reaction.attr("aria-label", new_label);
 
@@ -304,7 +317,14 @@ view.update_existing_reaction = function ({
     }
 };
 
-view.insert_new_reaction = function ({message_id, user_id, emoji_name, emoji_code, reaction_type}) {
+view.insert_new_reaction = function ({
+    message_id,
+    user_id,
+    emoji_name,
+    emoji_code,
+    reaction_type,
+    vote_text,
+}) {
     // Our caller ensures we are the first user to react to this
     // message with this emoji, and it populates user_list for
     // us.  We then render the emoji/title/count and insert it
@@ -320,6 +340,7 @@ view.insert_new_reaction = function ({message_id, user_id, emoji_name, emoji_cod
     const new_label = generate_title(emoji_name, user_list);
 
     context.count = 1;
+    context.vote_text = vote_text;
     context.label = new_label;
     context.local_id = get_local_reaction_id({reaction_type, emoji_code});
     context.emoji_alt_code = user_settings.emojiset === "text";
@@ -369,7 +390,7 @@ export function remove_reaction(event) {
 
     r.user_ids = r.user_ids.filter((id) => id !== user_id);
     if (r.user_ids.length > 0) {
-        update_user_fields(r);
+        update_user_fields(r, message);
     } else {
         message.clean_reactions.delete(local_id);
     }
@@ -382,6 +403,7 @@ export function remove_reaction(event) {
         user_list: r.user_ids,
         user_id,
     });
+    update_vote_text_on_message(message);
 }
 
 view.remove_reaction = function ({
@@ -410,9 +432,6 @@ view.remove_reaction = function ({
     $reaction.attr("aria-label", new_label);
 
     // If the user is the current user, turn off the "reacted" class.
-
-    set_reaction_count($reaction, user_list.length);
-
     if (user_id === page_params.user_id) {
         $reaction.removeClass("reacted");
     }
@@ -501,19 +520,20 @@ export function set_clean_reactions(message) {
 
         message.clean_reactions.set(
             local_id,
-            make_clean_reaction({local_id, user_ids, ...reaction}),
+            make_clean_reaction({message, local_id, user_ids, ...reaction}),
         );
     }
 }
 
-function make_clean_reaction({local_id, user_ids, emoji_name, emoji_code, reaction_type}) {
+function make_clean_reaction({message, local_id, user_ids, emoji_name, emoji_code, reaction_type}) {
     const r = {
         local_id,
         user_ids,
         ...emoji.get_emoji_details_for_rendering({emoji_name, emoji_code, reaction_type}),
     };
 
-    update_user_fields(r);
+    update_user_fields(r, message);
+    r.vote_text = get_vote_text_in_clean_reactions(r.user_ids, message);
 
     r.emoji_alt_code = user_settings.emojiset === "text";
     r.is_realm_emoji = r.reaction_type === "realm_emoji" || r.reaction_type === "zulip_extra_emoji";
@@ -521,12 +541,92 @@ function make_clean_reaction({local_id, user_ids, emoji_name, emoji_code, reacti
     return r;
 }
 
-export function update_user_fields(r) {
+export function update_user_fields(r, message) {
     r.count = r.user_ids.length;
+    r.vote_text = get_vote_text(r.user_ids, message);
     r.label = generate_title(r.emoji_name, r.user_ids);
     if (r.user_ids.includes(page_params.user_id)) {
         r.class = "message_reaction reacted";
     } else {
         r.class = "message_reaction";
+    }
+}
+
+// to set vote text when message is being cleaned.
+// this is an alternative to the commented out 'if'
+// block in get_total_votes_on_message() for now.
+function get_vote_text_in_clean_reactions(user_list, message) {
+    if (!user_settings.display_emoji_reaction_users) {
+        return `${user_list.length}`;
+    }
+    const usernames = people.get_display_full_names(user_list);
+    const current_user_has_reacted = user_list.includes(page_params.user_id);
+
+    if (current_user_has_reacted) {
+        const current_user_index = user_list.indexOf(page_params.user_id);
+        usernames[current_user_index] = $t({
+            defaultMessage: "You",
+        });
+    }
+
+    if (message.reactions.length <= 3) {
+        const comma_separated_usernames = usernames.join(", ");
+        return comma_separated_usernames;
+    }
+
+    // returning length as a string instead of integer for consistency
+    return `${usernames.length}`;
+}
+
+export function get_vote_text(user_list, message) {
+    if (!user_settings.display_emoji_reaction_users) {
+        return `${user_list.length}`;
+    }
+    const usernames = people.get_display_full_names(user_list);
+    const current_user_has_reacted = user_list.includes(page_params.user_id);
+
+    if (current_user_has_reacted) {
+        const current_user_index = user_list.indexOf(page_params.user_id);
+        usernames[current_user_index] = $t({
+            defaultMessage: "You",
+        });
+    }
+
+    if (get_total_votes_on_message(message) <= 3) {
+        const comma_separated_usernames = usernames.join(", ");
+        return comma_separated_usernames;
+    }
+
+    // returning length as a string instead of integer for consistency
+    return `${usernames.length}`;
+}
+
+export function get_total_votes_on_message(message) {
+    /*
+        this code path is followed when this function is called from
+        set_clean_reactions. At this point the message is still being
+        cleaned so we have to return the total votes in this manner.
+    */
+    // if (!message.message_reactions) {
+    //     return message.reactions.length;
+    // }
+
+    const message_reactions = get_message_reactions(message);
+    let total_votes = 0;
+    for (const r of message_reactions) {
+        total_votes += r.user_ids.length;
+    }
+    return total_votes;
+}
+
+export function update_vote_text_on_message(message) {
+    if (!message.message_reactions) {
+        return;
+    }
+    const message_reactions = get_message_reactions(message);
+    for (const r of message_reactions) {
+        r.vote_text = get_vote_text(r.user_ids, message);
+        const reaction_elem = find_reaction(message.id, r.local_id);
+        set_reaction_vote_text(reaction_elem, r.user_ids, message);
     }
 }
