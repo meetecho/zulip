@@ -152,6 +152,21 @@ AUTHENTICATION_BACKENDS: Tuple[str, ...] = (
     # "zproject.backends.GenericOpenIdConnectBackend",  # Generic OIDC integration, setup below
 )
 
+## JWT authentication.
+##
+## If you want to allow JWT-based authentication in Zulip, you need to
+## set the secret key and algorithm to use to validate JWT tokens received.
+JWT_AUTH_KEYS = {
+	# Realm(s) for which you want to enable JWT-based authentication.
+	"zulip.example.com": {
+		# Shared secret key used to validate jwt tokens.
+		"key": "key1",
+		# Algorithm with which the jwt token are signed.
+		"algorithms": ["HS256"] 
+	} 
+}
+
+
 ## LDAP integration.
 ##
 ## Zulip supports retrieving information about users via LDAP, and
