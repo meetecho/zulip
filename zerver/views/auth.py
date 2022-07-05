@@ -856,6 +856,44 @@ def start_two_factor_auth(
 
 
 @csrf_exempt
+@has_request_variables
+def jwt_fetch_api_key(
+    request: HttpRequest, json_web_token: str = REQ(default="")
+) -> HttpResponse:
+    realm = get_realm_from_request(request)
+    host = realm.host
+    if realm is None:
+        raise JsonableError(_("Invalid subdomain"))
+    try:
+        key = settings.JWT_AUTH_KEYS[host]["key"]
+        algorithms = settings.JWT_AUTH_KEYS[host]["algorithms"]
+    except KeyError:
+        raise JsonableError(_("Auth key for this subdomain not found."))
+
+    try:
+        json_web_token = request.POST["json_web_token"]
+        options = {"verify_signature": True}
+        payload = jwt.decode(json_web_token, key, algorithms=algorithms, options=options)
+    except KeyError:
+        raise JsonableError(_("No JSON web token passed in request"))
+    except jwt.InvalidTokenError:
+        raise JsonableError(_("Bad JSON web token"))
+
+    remote_email = payload.get("email", None)
+    if remote_email is None:
+        raise JsonableError(_("No email specified in JSON web token claims"))
+
+    user_profile = authenticate(username=remote_email, realm=realm, use_dummy_backend=True)
+
+    process_client(request, user_profile)
+
+    api_key = get_api_key(user_profile)
+    return json_success(request, data={"api_key": api_key, "email": user_profile.delivery_email})
+
+
+
+
+@csrf_exempt
 @require_post
 @has_request_variables
 def api_fetch_api_key(
