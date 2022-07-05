@@ -23,6 +23,7 @@ from zerver.views.alert_words import add_alert_words, list_alert_words, remove_a
 from zerver.views.attachments import list_by_user, remove
 from zerver.views.auth import (
     api_fetch_api_key,
+    jwt_fetch_api_key,
     api_get_server_settings,
     json_fetch_api_key,
     log_into_subdomain,
@@ -650,6 +651,9 @@ i18n_urls = [
     path("use-cases/", landing_view, {"template_name": "zerver/use-cases.html"}),
     path("self-hosting/", landing_view, {"template_name": "zerver/self-hosting.html"}),
     path("security/", landing_view, {"template_name": "zerver/security.html"}),
+
+    # jwtpatch
+    path("jwt/fetch_api_key", jwt_fetch_api_key),
 ]
 
 # Make a copy of i18n_urls so that they appear without prefix for english
