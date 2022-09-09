@@ -67,10 +67,7 @@ from zerver.lib.subdomains import get_subdomain, is_subdomain_root_or_alias
 from zerver.lib.types import ViewFuncT
 from zerver.lib.url_encoding import append_url_query_string
 from zerver.lib.user_agent import parse_user_agent
-from zerver.lib.users import (
-    get_api_key,
-    get_raw_user_data,
-)    
+from zerver.lib.users import get_api_key, get_raw_user_data
 from zerver.lib.utils import has_api_key_format
 from zerver.lib.validator import validate_login_email
 from zerver.models import (
@@ -896,23 +893,17 @@ def jwt_fetch_api_key(
     api_key = get_api_key(user_profile)
 
     realm = user_profile.realm
-    if realm.email_address_visibility != Realm.EMAIL_ADDRESS_VISIBILITY_EVERYONE:
-        # If email addresses are only available to administrators,
-        # clients cannot compute gravatars, so we force-set it to false.
-        client_gravatar = False
 
     members = get_raw_user_data(
         realm,
         user_profile,
         target_user=user_profile,
-        client_gravatar=client_gravatar,
+        client_gravatar=False,
         user_avatar_url_field_optional=False,
         include_custom_profile_fields=False,
     )
 
     return json_success(request, data={"api_key": api_key, "user": members[user_profile.id]})
-
-
 
 
 @csrf_exempt
