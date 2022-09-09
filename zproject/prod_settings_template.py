@@ -156,9 +156,9 @@ AUTHENTICATION_BACKENDS: Tuple[str, ...] = (
 ##
 ## If you want to allow JWT-based authentication in Zulip, you need to
 ## set the secret key and algorithm to use to validate JWT tokens received.
-JWT_AUTH_KEYS = {
+JWT_AUTH_KEYS: Dict[str, Any] = {
     # Realm(s) for which you want to enable JWT-based authentication.
-    "localhost:4443": {
+    "zulip.example.com": {
         # Shared secret key used to validate jwt tokens.
         "key": "key1",
         # Algorithm with which the jwt token are signed.
