@@ -859,9 +859,10 @@ def start_two_factor_auth(
 @has_request_variables
 def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default="")) -> HttpResponse:
     realm = get_realm_from_request(request)
-    host = realm.host
     if realm is None:
         raise JsonableError(_("Invalid subdomain"))
+
+    host = realm.host
     try:
         key = settings.JWT_AUTH_KEYS[host]["key"]
         algorithms = settings.JWT_AUTH_KEYS[host]["algorithms"]
@@ -881,19 +882,25 @@ def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default=""
     if remote_email is None:
         raise JsonableError(_("No email specified in JSON web token claims"))
 
-    user_profile = authenticate(username=remote_email, realm=realm, use_dummy_backend=True)
-
+    user_profile: Optional[UserProfile] = None
+    return_data: Dict[str, bool] = {}
+    user_profile = authenticate(
+        username=remote_email, realm=realm, return_data=return_data, use_dummy_backend=True
+    )
+    if return_data.get("inactive_user"):
+        raise JsonableError(_("Account is deactivated"))
+    if return_data.get("inactive_realm"):
+        raise JsonableError(_("This organization has been deactivated"))
+    if return_data.get("invalid_subdomain"):
+        raise JsonableError(_("Invalid subdomain"))
     if user_profile is None:
         raise JsonableError(_("User not found"))
 
     process_client(request, user_profile)
 
     api_key = get_api_key(user_profile)
-
-    realm = user_profile.realm
-
     members = get_raw_user_data(
-        realm,
+        user_profile.realm,
         user_profile,
         target_user=user_profile,
         client_gravatar=False,
