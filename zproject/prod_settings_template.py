@@ -162,7 +162,7 @@ JWT_AUTH_KEYS = {
         # Shared secret key used to validate jwt tokens.
         "key": "key1",
         # Algorithm with which the jwt token are signed.
-        "algorithms": ["HS256"]
+        "algorithms": ["HS256"],
     }
 }
 

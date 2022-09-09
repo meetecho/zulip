@@ -857,9 +857,7 @@ def start_two_factor_auth(
 
 @csrf_exempt
 @has_request_variables
-def jwt_fetch_api_key(
-    request: HttpRequest, json_web_token: str = REQ(default="")
-) -> HttpResponse:
+def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default="")) -> HttpResponse:
     realm = get_realm_from_request(request)
     host = realm.host
     if realm is None:
