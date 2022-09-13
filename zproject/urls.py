@@ -751,7 +751,7 @@ urls += [
 ]
 
 #  This view accepts a JWT containing an email and returns an API key
-#  and the user profile.
+#  and the details for a single user.
 urls += [
     path("jwt/fetch_api_key", jwt_fetch_api_key),
 ]

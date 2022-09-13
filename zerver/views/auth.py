@@ -864,10 +864,10 @@ def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default=""
 
     host = realm.host
     try:
-        key = settings.JWT_AUTH_KEYS[host]["key"]
-        algorithms = settings.JWT_AUTH_KEYS[host]["algorithms"]
+        key = settings.JWT_FETCH_API_KEYS[host]["key"]
+        algorithms = settings.JWT_FETCH_API_KEYS[host]["algorithms"]
     except KeyError:
-        raise JsonableError(_("Auth key for this subdomain not found."))
+        raise JsonableError(_("Auth key for this subdomain not found"))
 
     try:
         json_web_token = request.POST["json_web_token"]
@@ -879,10 +879,9 @@ def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default=""
         raise JsonableError(_("Bad JSON web token"))
 
     remote_email = payload.get("email", None)
-    if remote_email is None:
+    if remote_email is None or not remote_email:
         raise JsonableError(_("No email specified in JSON web token claims"))
 
-    user_profile: Optional[UserProfile] = None
     return_data: Dict[str, bool] = {}
     user_profile = authenticate(
         username=remote_email, realm=realm, return_data=return_data, use_dummy_backend=True
@@ -900,7 +899,7 @@ def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default=""
 
     api_key = get_api_key(user_profile)
     members = get_raw_user_data(
-        user_profile.realm,
+        realm,
         user_profile,
         target_user=user_profile,
         client_gravatar=False,
