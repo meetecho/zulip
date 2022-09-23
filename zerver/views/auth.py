@@ -855,17 +855,51 @@ def start_two_factor_auth(
     return two_fa_view(request, **kwargs)
 
 
+def process_api_key_fetch_authenticate_result(
+    request: HttpRequest, user_profile: UserProfile, return_data: Dict[str, bool]
+) -> str:
+    if return_data.get("inactive_user"):
+        raise UserDeactivatedError()
+    if return_data.get("inactive_realm"):
+        raise RealmDeactivatedError()
+    if return_data.get("password_auth_disabled"):
+        raise PasswordAuthDisabledError()
+    if return_data.get("password_reset_needed"):
+        raise PasswordResetRequiredError()
+    if return_data.get("invalid_subdomain"):
+        raise InvalidSubdomainError()
+    if user_profile is None:
+        raise AuthenticationFailedError()
+
+    assert user_profile.is_authenticated
+
+    # Maybe sending 'user_logged_in' signal is the better approach:
+    #   user_logged_in.send(sender=user_profile.__class__, request=request, user=user_profile)
+    # Not doing this only because over here we don't add the user information
+    # in the session. If the signal receiver assumes that we do then that
+    # would cause problems.
+    email_on_new_login(sender=user_profile.__class__, request=request, user=user_profile)
+
+    # Mark this request as having a logged-in user for our server logs.
+    process_client(request, user_profile)
+    RequestNotes.get_notes(request).requestor_for_logs = user_profile.format_requestor_for_logs()
+
+    api_key = get_api_key(user_profile)
+    return api_key
+
+
 @csrf_exempt
 @has_request_variables
 def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default="")) -> HttpResponse:
+    return_data: Dict[str, bool] = {}
+
     realm = get_realm_from_request(request)
     if realm is None:
-        raise JsonableError(_("Invalid subdomain"))
+        raise InvalidSubdomainError()
 
-    subdomain = realm.subdomain
     try:
-        key = settings.JWT_AUTH_KEYS[subdomain]["key"]
-        algorithms = settings.JWT_AUTH_KEYS[subdomain]["algorithms"]
+        key = settings.JWT_AUTH_KEYS[realm.subdomain]["key"]
+        algorithms = settings.JWT_AUTH_KEYS[realm.subdomain]["algorithms"]
     except KeyError:
         raise JsonableError(_("Auth key for this subdomain not found"))
 
@@ -882,22 +916,12 @@ def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default=""
     if remote_email is None or not remote_email:
         raise JsonableError(_("No email specified in JSON web token claims"))
 
-    return_data: Dict[str, bool] = {}
     user_profile = authenticate(
         username=remote_email, realm=realm, return_data=return_data, use_dummy_backend=True
     )
-    if return_data.get("inactive_user"):
-        raise UserDeactivatedError()
-    if return_data.get("inactive_realm"):
-        raise RealmDeactivatedError()
-    if return_data.get("invalid_subdomain"):
-        raise InvalidSubdomainError()
-    if user_profile is None:
-        raise AuthenticationFailedError()
 
-    process_client(request, user_profile)
+    api_key = process_api_key_fetch_authenticate_result(request, user_profile, return_data)
 
-    api_key = get_api_key(user_profile)
     members = get_raw_user_data(
         realm,
         user_profile,
@@ -929,31 +953,11 @@ def api_fetch_api_key(
     user_profile = authenticate(
         request=request, username=username, password=password, realm=realm, return_data=return_data
     )
-    if return_data.get("inactive_user"):
-        raise UserDeactivatedError()
-    if return_data.get("inactive_realm"):
-        raise RealmDeactivatedError()
-    if return_data.get("password_auth_disabled"):
-        raise PasswordAuthDisabledError()
-    if return_data.get("password_reset_needed"):
-        raise PasswordResetRequiredError()
-    if user_profile is None:
-        raise AuthenticationFailedError()
 
-    assert user_profile.is_authenticated
+    api_key = api_key = process_api_key_fetch_authenticate_result(
+        request, user_profile, return_data
+    )
 
-    # Maybe sending 'user_logged_in' signal is the better approach:
-    #   user_logged_in.send(sender=user_profile.__class__, request=request, user=user_profile)
-    # Not doing this only because over here we don't add the user information
-    # in the session. If the signal receiver assumes that we do then that
-    # would cause problems.
-    email_on_new_login(sender=user_profile.__class__, request=request, user=user_profile)
-
-    # Mark this request as having a logged-in user for our server logs.
-    process_client(request, user_profile)
-    RequestNotes.get_notes(request).requestor_for_logs = user_profile.format_requestor_for_logs()
-
-    api_key = get_api_key(user_profile)
     return json_success(request, data={"api_key": api_key, "email": user_profile.delivery_email})
 
 

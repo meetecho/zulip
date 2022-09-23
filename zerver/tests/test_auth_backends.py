@@ -5413,9 +5413,10 @@ class TestJWTLogin(ZulipTestCase):
             )
 
     def test_login_failure_when_key_does_not_exist(self) -> None:
-        data = {"json_web_token": "not relevant"}
-        result = self.client_post("/accounts/login/jwt/", data)
-        self.assert_json_error_contains(result, "Auth key for this subdomain not found.", 400)
+        with self.settings(JWT_AUTH_KEYS={"acme": {"key": "key", "algorithms": ["HS256"]}}):
+            data = {"json_web_token": "not relevant"}
+            result = self.client_post("/accounts/login/jwt/", data)
+            self.assert_json_error_contains(result, "Auth key for this subdomain not found.", 400)
 
     def test_login_failure_when_key_is_missing(self) -> None:
         with self.settings(JWT_AUTH_KEYS={"zulip": {"key": "key", "algorithms": ["HS256"]}}):
@@ -6791,7 +6792,7 @@ class JWTFetchAPIKeyTest(ZulipTestCase):
     def test_invalid_subdomain_from_request_failure(self) -> None:
         with mock.patch("zerver.views.auth.get_realm_from_request", return_value=None):
             result = self.client_post("/jwt/fetch_api_key")
-            self.assert_json_error_contains(result, "Invalid subdomain", 400)
+            self.assert_json_error_contains(result, "Invalid subdomain", 404)
 
     def test_jwt_key_not_found_failure(self) -> None:
         with self.settings(JWT_AUTH_KEYS={"zulip": {"key": "key1", "algorithms": ["HS256"]}}):
