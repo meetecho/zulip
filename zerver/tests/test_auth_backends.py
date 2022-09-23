@@ -6871,7 +6871,7 @@ class JWTFetchAPIKeyTest(ZulipTestCase):
             web_token = jwt.encode(payload, key, algorithm)
             req_data = {"json_web_token": web_token}
             result = self.client_post("/jwt/fetch_api_key", req_data)
-            self.assert_json_error_contains(result, "User not found", 400)
+            self.assert_json_error_contains(result, "Your username or password is incorrect", 401)
 
     def test_inactive_user_failure(self) -> None:
         payload = {"email": self.email}
@@ -6884,7 +6884,7 @@ class JWTFetchAPIKeyTest(ZulipTestCase):
             web_token = jwt.encode(payload, key, algorithm)
             req_data = {"json_web_token": web_token}
             result = self.client_post("/jwt/fetch_api_key", req_data)
-            self.assert_json_error_contains(result, "Account is deactivated", 400)
+            self.assert_json_error_contains(result, "Account is deactivated", 401)
 
     def test_inactive_realm_failure(self) -> None:
         payload = {"email": self.email}
@@ -6897,7 +6897,7 @@ class JWTFetchAPIKeyTest(ZulipTestCase):
             web_token = jwt.encode(payload, key, algorithm)
             req_data = {"json_web_token": web_token}
             result = self.client_post("/jwt/fetch_api_key", req_data)
-            self.assert_json_error_contains(result, "This organization has been deactivated", 400)
+            self.assert_json_error_contains(result, "This organization has been deactivated", 401)
 
     def test_invalid_realm_failure(self) -> None:
         payload = {"email": self.mit_email("starnine")}
@@ -6909,7 +6909,7 @@ class JWTFetchAPIKeyTest(ZulipTestCase):
             web_token = jwt.encode(payload, key, algorithm)
             req_data = {"json_web_token": web_token}
             result = self.client_post("/jwt/fetch_api_key", req_data)
-            self.assert_json_error_contains(result, "Invalid subdomain", 400)
+            self.assert_json_error_contains(result, "Invalid subdomain", 404)
 
 
 # Don't load the base class as a test: https://bugs.python.org/issue17519.

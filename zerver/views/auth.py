@@ -887,13 +887,13 @@ def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default=""
         username=remote_email, realm=realm, return_data=return_data, use_dummy_backend=True
     )
     if return_data.get("inactive_user"):
-        raise JsonableError(_("Account is deactivated"))
+        raise UserDeactivatedError()
     if return_data.get("inactive_realm"):
-        raise JsonableError(_("This organization has been deactivated"))
+        raise RealmDeactivatedError()
     if return_data.get("invalid_subdomain"):
-        raise JsonableError(_("Invalid subdomain"))
+        raise InvalidSubdomainError()
     if user_profile is None:
-        raise JsonableError(_("User not found"))
+        raise AuthenticationFailedError()
 
     process_client(request, user_profile)
 
