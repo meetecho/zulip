@@ -383,11 +383,8 @@ if TYPE_CHECKING:
 
 
 # Set a JwtAuthKey for a specific subdomain id to be used for logging
-# users in through Json Web Token.
+# users in or fetching user API keys through Json Web Token.
 JWT_AUTH_KEYS: Dict[str, "JwtAuthKey"] = {}
-# Set a JwtAuthKey for a specific subdomain host to be used for
-# fetching user API keys through Json Web Token.
-JWT_FETCH_API_KEYS: Dict[str, "JwtAuthKey"] = {}
 
 # https://docs.djangoproject.com/en/3.2/ref/settings/#std:setting-SERVER_EMAIL
 # Django setting for what from address to use in error emails.

@@ -862,10 +862,10 @@ def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default=""
     if realm is None:
         raise JsonableError(_("Invalid subdomain"))
 
-    host = realm.host
+    subdomain = realm.subdomain
     try:
-        key = settings.JWT_FETCH_API_KEYS[host]["key"]
-        algorithms = settings.JWT_FETCH_API_KEYS[host]["algorithms"]
+        key = settings.JWT_AUTH_KEYS[subdomain]["key"]
+        algorithms = settings.JWT_AUTH_KEYS[subdomain]["algorithms"]
     except KeyError:
         raise JsonableError(_("Auth key for this subdomain not found"))
 

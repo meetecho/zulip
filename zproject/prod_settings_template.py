@@ -152,13 +152,14 @@ AUTHENTICATION_BACKENDS: Tuple[str, ...] = (
     # "zproject.backends.GenericOpenIdConnectBackend",  # Generic OIDC integration, setup below
 )
 
-## JWT-based API keys fetching.
+## JWT-based users login and API keys fetching.
 ##
-## If you want to fetch API keys via JWT in Zulip, you need to set the
-## secret key and algorithm to use to validate JWT tokens received.
-JWT_FETCH_API_KEYS: Dict[str, Any] = {
-    # Subdomain Host(s) for which you want to enable JWT-based API keys fetching.
-    "zulip.example.com": {
+## If you want to login users or fetch API keys via JWT in Zulip,
+## you need to set the secret key and algorithm to use to validate
+## JWT tokens received.
+JWT_AUTH_KEYS: Dict[str, Any] = {
+    # Subdomain for which you want to enable the service.
+    "zulip": {
         # Shared secret key used to validate jwt tokens.
         "key": "key1",
         # Algorithm with which the jwt token are signed.
