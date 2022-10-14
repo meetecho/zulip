@@ -6787,6 +6787,36 @@ class JWTFetchAPIKeyTest(ZulipTestCase):
             self.assert_json_success(result)
             data = result.json()
             self.assertEqual(data["api_key"], self.api_key)
+            self.assertEqual(data["email"], self.email)
+            self.assertNotIn("user", data)
+
+    def test_success_with_profile_false(self) -> None:
+        payload = {"email": self.email}
+        with self.settings(JWT_AUTH_KEYS={"zulip": {"key": "key1", "algorithms": ["HS256"]}}):
+            key = settings.JWT_AUTH_KEYS["zulip"]["key"]
+            [algorithm] = settings.JWT_AUTH_KEYS["zulip"]["algorithms"]
+            web_token = jwt.encode(payload, key, algorithm)
+            req_data = {"json_web_token": web_token, "include_profile": "false"}
+            result = self.client_post("/jwt/fetch_api_key", req_data)
+            self.assert_json_success(result)
+            data = result.json()
+            self.assertEqual(data["api_key"], self.api_key)
+            self.assertEqual(data["email"], self.email)
+            self.assertNotIn("user", data)
+
+    def test_success_with_profile_true(self) -> None:
+        payload = {"email": self.email}
+        with self.settings(JWT_AUTH_KEYS={"zulip": {"key": "key1", "algorithms": ["HS256"]}}):
+            key = settings.JWT_AUTH_KEYS["zulip"]["key"]
+            [algorithm] = settings.JWT_AUTH_KEYS["zulip"]["algorithms"]
+            web_token = jwt.encode(payload, key, algorithm)
+            req_data = {"json_web_token": web_token, "include_profile": "true"}
+            result = self.client_post("/jwt/fetch_api_key", req_data)
+            self.assert_json_success(result)
+            data = result.json()
+            self.assertEqual(data["api_key"], self.api_key)
+            self.assertEqual(data["email"], self.email)
+            self.assertIn("user", data)
             self.assertEqual(data["user"], self.raw_user_data)
 
     def test_invalid_subdomain_from_request_failure(self) -> None:

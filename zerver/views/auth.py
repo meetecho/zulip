@@ -69,7 +69,7 @@ from zerver.lib.url_encoding import append_url_query_string
 from zerver.lib.user_agent import parse_user_agent
 from zerver.lib.users import get_api_key, get_raw_user_data
 from zerver.lib.utils import has_api_key_format
-from zerver.lib.validator import validate_login_email
+from zerver.lib.validator import check_bool, validate_login_email
 from zerver.models import (
     MultiuseInvite,
     PreregistrationUser,
@@ -890,7 +890,11 @@ def process_api_key_fetch_authenticate_result(
 
 @csrf_exempt
 @has_request_variables
-def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default="")) -> HttpResponse:
+def jwt_fetch_api_key(
+    request: HttpRequest,
+    json_web_token: str = REQ(default=""),
+    include_profile: bool = REQ(default=False, json_validator=check_bool),
+) -> HttpResponse:
     return_data: Dict[str, bool] = {}
 
     realm = get_realm_from_request(request)
@@ -920,18 +924,23 @@ def jwt_fetch_api_key(request: HttpRequest, json_web_token: str = REQ(default=""
         username=remote_email, realm=realm, return_data=return_data, use_dummy_backend=True
     )
 
-    api_key = process_api_key_fetch_authenticate_result(request, user_profile, return_data)
+    result = {
+        "api_key": process_api_key_fetch_authenticate_result(request, user_profile, return_data),
+        "email": user_profile.delivery_email,
+    }
 
-    members = get_raw_user_data(
-        realm,
-        user_profile,
-        target_user=user_profile,
-        client_gravatar=False,
-        user_avatar_url_field_optional=False,
-        include_custom_profile_fields=False,
-    )
+    if include_profile:
+        members = get_raw_user_data(
+            realm,
+            user_profile,
+            target_user=user_profile,
+            client_gravatar=False,
+            user_avatar_url_field_optional=False,
+            include_custom_profile_fields=False,
+        )
+        result["user"] = members[user_profile.id]
 
-    return json_success(request, data={"api_key": api_key, "user": members[user_profile.id]})
+    return json_success(request, data=result)
 
 
 @csrf_exempt
