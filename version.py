@@ -1,6 +1,6 @@
 import os
 
-ZULIP_VERSION = "5.3"
+ZULIP_VERSION = "5.6+git"
 
 # Add information on number of commits and commit hash to version, if available
 zulip_git_version_file = os.path.join(
@@ -14,7 +14,7 @@ ZULIP_VERSION = lines.pop(0).strip()
 ZULIP_MERGE_BASE = lines.pop(0).strip()
 
 LATEST_MAJOR_VERSION = "5.0"
-LATEST_RELEASE_VERSION = "5.3"
+LATEST_RELEASE_VERSION = "5.6"
 LATEST_RELEASE_ANNOUNCEMENT = "https://blog.zulip.com/2022/03/29/zulip-5-0-released/"
 
 # Versions of the desktop app below DESKTOP_MINIMUM_VERSION will be
@@ -48,4 +48,4 @@ API_FEATURE_LEVEL = 122
 #   historical commits sharing the same major version, in which case a
 #   minor version bump suffices.
 
-PROVISION_VERSION = "187.0"
+PROVISION_VERSION = "191.0"

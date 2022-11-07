@@ -44,7 +44,7 @@ from django.utils import translation
 from django.utils.module_loading import import_string
 from django.utils.timezone import now as timezone_now
 from fakeldap import MockLDAP
-from two_factor.models import PhoneDevice
+from two_factor.plugins.phonenumber.models import PhoneDevice
 
 from corporate.models import Customer, CustomerPlan, LicenseLedger
 from zerver.actions.message_send import check_send_message, check_send_stream_message
@@ -1590,7 +1590,7 @@ class WebhookTestCase(ZulipTestCase):
                     complete_event_type is not None
                     and all_event_types is not None
                     and complete_event_type not in all_event_types
-                ):
+                ):  # nocoverage
                     raise Exception(
                         f"""
 Error: This test triggered a message using the event "{complete_event_type}", which was not properly

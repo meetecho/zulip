@@ -7,6 +7,49 @@ up-to-date list of raw changes.
 
 ## Zulip 5.x series
 
+### 5.6 -- 2022-08-24
+
+- CVE-2022-36048: Change the Markdown renderer to only rewrite known
+  local links as relative links, rather than rewriting all local
+  links. This fix also protects against a vulnerability in the Zulip
+  mobile app (CVE-2022-35962).
+- Added hardening against timing attacks to an internal authentication check.
+- Improved documentation for hosting multiple organizations on a server.
+- Updated dependencies.
+- Updated translations.
+
+### 5.5 -- 2022-07-21
+
+- CVE-2022-31168: Fix authorization check for changing bot roles. Due
+  to an incorrect authorization check in Zulip Server 5.4 and all prior
+  releases, a member of an organization could craft an API call that
+  would grant organization administrator privileges to one of their bots.
+- Added new options to the `restore-backup` tool to simplify restoring
+  backups on a system with a different configuration.
+- Updated translations, including major updates to the Mongolian and
+  Serbian translations.
+
+### 5.4 -- 2022-07-11
+
+- CVE-2022-31134: Exclude private file uploads from [exports of public
+  data](https://zulip.com/help/export-your-organization#export-of-public-data). We
+  would like to thank Antoine Benoist for bringing this issue to our
+  attention.
+- Upgraded python requirements.
+- Improved documentation for load balancers to mention CIDR address
+  ranges.
+- Documented an explicit list of supported CPU architectures.
+- Switched `html2text` to run as a subprocess, rather than a Python
+  module, as its GPL license is not compatible with Zulip’s.
+- Replaced `markdown-include` python module with a reimplementation,
+  as its GPL license is not compatible with Zulip’s.
+- Relicensed as GPL the `tools/check-thirdparty` developer tool which
+  verifies third-party licenses, due to a GPL dependency by way of
+  `python-debian`.
+- Closed a potential race condition in the Tornado server, with events
+  arriving at exactly the same time as request causing server errors.
+- Added a tool to help automate more of the release process.
+
 ### 5.3 -- 2022-06-21
 
 - CVE-2022-31017: Fixed message edit event exposure in

@@ -72,7 +72,6 @@ module = [
     "gitlint.*",
     "jsonref.*",
     "ldap.*",
-    "markdown_include.*",
     "moto.*", # https://github.com/spulec/moto/issues/4944
     "netifaces.*",
     "onelogin.*",
@@ -92,6 +91,5 @@ module = [
     "tlds.*",
     "twitter.*",
     "two_factor.*",
-    "zxcvbn.*", # https://github.com/dwolfhub/zxcvbn-python/issues/56
 ]
 ignore_missing_imports = true

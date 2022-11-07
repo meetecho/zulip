@@ -9,7 +9,7 @@ from django.template.loaders import app_directories
 
 import zerver.lib.logging_util
 from scripts.lib.zulip_tools import get_tornado_ports
-from zerver.lib.db import TimeTrackingConnection
+from zerver.lib.db import TimeTrackingConnection, TimeTrackingCursor
 
 from .config import (
     DEPLOY_ROOT,
@@ -216,6 +216,7 @@ INSTALLED_APPS = [
     "django_otp.plugins.otp_static",
     "django_otp.plugins.otp_totp",
     "two_factor",
+    "two_factor.plugins.phonenumber",
 ]
 if USING_PGROONGA:
     INSTALLED_APPS += ["pgroonga"]
@@ -287,6 +288,7 @@ DATABASES: Dict[str, Dict[str, Any]] = {
         "CONN_MAX_AGE": 600,
         "OPTIONS": {
             "connection_factory": TimeTrackingConnection,
+            "cursor_factory": TimeTrackingCursor,
         },
     }
 }
