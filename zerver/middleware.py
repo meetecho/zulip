@@ -25,7 +25,9 @@ from django.middleware.locale import LocaleMiddleware as DjangoLocaleMiddleware
 from django.shortcuts import render
 from django.utils import translation
 from django.utils.cache import patch_vary_headers
+from django.utils.crypto import constant_time_compare
 from django.utils.deprecation import MiddlewareMixin
+from django.utils.log import log_response
 from django.utils.translation import gettext as _
 from django.views.csrf import csrf_failure as html_csrf_failure
 from django_scim.middleware import SCIMAuthCheckMiddleware
@@ -456,8 +458,23 @@ class JsonErrorHandler(MiddlewareMixin):
                 return json_unauthorized(www_authenticate="session")
 
         if isinstance(exception, JsonableError):
-            return json_response_from_error(exception)
-        if RequestNotes.get_notes(request).error_format == "JSON":
+            response = json_response_from_error(exception)
+            if response.status_code >= 500:
+                # Here we use Django's log_response the way Django uses
+                # it normally to log error responses. However, we make the small
+                # modification of including the traceback to make the log message
+                # more helpful. log_response takes care of knowing not to duplicate
+                # the logging, so Django won't generate a second log message.
+                log_response(
+                    "%s: %s",
+                    response.reason_phrase,
+                    request.path,
+                    response=response,
+                    request=request,
+                    exc_info=True,
+                )
+            return response
+        if RequestNotes.get_notes(request).error_format == "JSON" and not settings.TEST_SUITE:
             capture_exception(exception)
             json_error_logger = logging.getLogger("zerver.middleware.json_error_handler")
             json_error_logger.error(traceback.format_exc(), extra=dict(request=request))
@@ -688,7 +705,10 @@ def validate_scim_bearer_token(request: HttpRequest) -> Optional[SCIMClient]:
     assert valid_bearer_token
     assert scim_client_name
 
-    if request.headers.get("Authorization") != f"Bearer {valid_bearer_token}":
+    authorization = request.headers.get("Authorization")
+    if authorization is None or not constant_time_compare(
+        authorization, f"Bearer {valid_bearer_token}"
+    ):
         return None
 
     request_notes = RequestNotes.get_notes(request)

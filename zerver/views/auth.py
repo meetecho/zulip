@@ -497,7 +497,7 @@ def oauth_redirect_to_root(
     url: str,
     sso_type: str,
     is_signup: bool = False,
-    extra_url_params: Dict[str, str] = {},
+    extra_url_params: Mapping[str, str] = {},
     next: Optional[str] = REQ(default=None),
     multiuse_object_key: str = REQ(default=""),
     mobile_flow_otp: Optional[str] = REQ(default=None),
@@ -856,7 +856,7 @@ def start_two_factor_auth(
 
 
 def process_api_key_fetch_authenticate_result(
-    request: HttpRequest, user_profile: UserProfile, return_data: Dict[str, bool]
+    request: HttpRequest, user_profile: Optional[UserProfile], return_data: Dict[str, bool]
 ) -> str:
     if return_data.get("inactive_user"):
         raise UserDeactivatedError()
@@ -923,9 +923,14 @@ def jwt_fetch_api_key(
     user_profile = authenticate(
         username=remote_email, realm=realm, return_data=return_data, use_dummy_backend=True
     )
+    if user_profile is not None:
+        assert isinstance(user_profile, UserProfile)
 
-    result = {
-        "api_key": process_api_key_fetch_authenticate_result(request, user_profile, return_data),
+    api_key = process_api_key_fetch_authenticate_result(request, user_profile, return_data)
+    assert user_profile is not None
+
+    result: Dict[str, Any] = {
+        "api_key": api_key,
         "email": user_profile.delivery_email,
     }
 
@@ -962,10 +967,13 @@ def api_fetch_api_key(
     user_profile = authenticate(
         request=request, username=username, password=password, realm=realm, return_data=return_data
     )
+    if user_profile is not None:
+        assert isinstance(user_profile, UserProfile)
 
     api_key = api_key = process_api_key_fetch_authenticate_result(
         request, user_profile, return_data
     )
+    assert user_profile is not None
 
     return json_success(request, data={"api_key": api_key, "email": user_profile.delivery_email})
 

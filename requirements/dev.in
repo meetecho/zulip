@@ -15,13 +15,13 @@ Twisted
 Scrapy
 
 # Needed to compute test coverage
-coverage
+coverage<6.4.3  # undiagnosed bug
 
 # fake for LDAP testing
 fakeldap
 
 # For testing mock http requests
-responses
+responses<0.22.0  # https://github.com/getsentry/responses/pull/593
 
 # For sorting imports
 isort

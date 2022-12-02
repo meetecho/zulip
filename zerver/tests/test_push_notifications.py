@@ -4,7 +4,7 @@ import datetime
 import re
 import uuid
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Tuple, Union
 from unittest import mock, skipUnless
 from urllib import parse
 
@@ -477,11 +477,9 @@ class PushBouncerNotificationTest(BouncerTestCase):
                     "ConnectionError while trying to connect to push notification bouncer",
                     502,
                 )
-                self.assertEqual(
-                    error_log.output,
-                    [
-                        f"ERROR:django.request:Bad Gateway: {endpoint}",
-                    ],
+                self.assertIn(
+                    f"ERROR:django.request:Bad Gateway: {endpoint}\nTraceback",
+                    error_log.output[0],
                 )
 
             with responses.RequestsMock() as resp, self.assertLogs(level="WARNING") as warn_log:
@@ -489,11 +487,11 @@ class PushBouncerNotificationTest(BouncerTestCase):
                 result = self.client_post(endpoint, {"token": token}, subdomain="zulip")
                 self.assert_json_error(result, "Received 500 from push notification bouncer", 502)
                 self.assertEqual(
-                    warn_log.output,
-                    [
-                        "WARNING:root:Received 500 from push notification bouncer",
-                        f"ERROR:django.request:Bad Gateway: {endpoint}",
-                    ],
+                    warn_log.output[0],
+                    "WARNING:root:Received 500 from push notification bouncer",
+                )
+                self.assertIn(
+                    f"ERROR:django.request:Bad Gateway: {endpoint}\nTraceback", warn_log.output[1]
                 )
 
         # Add tokens
@@ -571,13 +569,12 @@ class AnalyticsBouncerTest(BouncerTestCase):
         user = self.example_user("hamlet")
         end_time = self.TIME_ZERO
 
-        with responses.RequestsMock() as resp, mock.patch(
-            "zerver.lib.remote_server.logging.warning"
-        ) as mock_warning:
+        with responses.RequestsMock() as resp, self.assertLogs(level="WARNING") as mock_warning:
             resp.add(responses.GET, ANALYTICS_STATUS_URL, body=ConnectionError())
             send_analytics_to_remote_server()
-            mock_warning.assert_called_once_with(
-                "ConnectionError while trying to connect to push notification bouncer"
+            self.assertIn(
+                "WARNING:root:ConnectionError while trying to connect to push notification bouncer\nTraceback ",
+                mock_warning.output[0],
             )
             self.assertTrue(resp.assert_call_count(ANALYTICS_STATUS_URL, 1))
 
@@ -1517,7 +1514,7 @@ class TestAPNs(PushNotificationTest):
     def send(
         self,
         devices: Optional[List[Union[PushDeviceToken, RemotePushDeviceToken]]] = None,
-        payload_data: Dict[str, Any] = {},
+        payload_data: Mapping[str, Any] = {},
     ) -> None:
         send_apple_push_notification(
             UserPushIndentityCompat(user_id=self.user_profile.id),
