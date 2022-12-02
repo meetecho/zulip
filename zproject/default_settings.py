@@ -448,7 +448,8 @@ TERMS_OF_SERVICE_MESSAGE: Optional[str] = None
 # Hostname used for Zulip's statsd logging integration.
 STATSD_HOST = ""
 
-# Configuration for JWT auth.
+# Set a JwtAuthKey for a specific subdomain id to be used for logging
+# users in or fetching user API keys through Json Web Token.
 JWT_AUTH_KEYS: Dict[str, JwtAuthKey] = {}
 
 # https://docs.djangoproject.com/en/3.2/ref/settings/#std:setting-SERVER_EMAIL
