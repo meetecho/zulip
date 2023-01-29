@@ -5420,7 +5420,7 @@ class TestJWTLogin(ZulipTestCase):
             web_token = jwt.encode(payload, key, algorithm)
 
             user_profile = get_user_by_delivery_email(email, realm)
-            data = {"json_web_token": web_token}
+            data = {"token": web_token}
             result = self.client_post("/accounts/login/jwt/", data)
             self.assertEqual(result.status_code, 302)
             self.assert_logged_in_user_id(user_profile.id)
@@ -5431,7 +5431,7 @@ class TestJWTLogin(ZulipTestCase):
             key = settings.JWT_AUTH_KEYS["zulip"]["key"]
             [algorithm] = settings.JWT_AUTH_KEYS["zulip"]["algorithms"]
             web_token = jwt.encode(payload, key, algorithm)
-            data = {"json_web_token": web_token}
+            data = {"token": web_token}
             result = self.client_post("/accounts/login/jwt/", data)
             self.assert_json_error_contains(
                 result, "No email specified in JSON web token claims", 400
@@ -5439,7 +5439,7 @@ class TestJWTLogin(ZulipTestCase):
 
     def test_login_failure_when_key_does_not_exist(self) -> None:
         with self.settings(JWT_AUTH_KEYS={"acme": {"key": "key", "algorithms": ["HS256"]}}):
-            data = {"json_web_token": "not relevant"}
+            data = {"token": "not relevant"}
             result = self.client_post("/accounts/login/jwt/", data)
             self.assert_json_error_contains(
                 result, "JWT authentication is not enabled for this organization", 400
@@ -5454,7 +5454,7 @@ class TestJWTLogin(ZulipTestCase):
         with self.settings(JWT_AUTH_KEYS={"zulip": {"key": "key", "algorithms": ["HS256"]}}):
             result = self.client_post("/accounts/login/jwt/")
             self.assert_json_error_contains(result, "No JSON web token passed in request", 400)
-            data = {"json_web_token": "bad token"}
+            data = {"token": "bad token"}
             result = self.client_post("/accounts/login/jwt/", data)
             self.assert_json_error_contains(result, "Bad JSON web token", 400)
 
@@ -5464,7 +5464,7 @@ class TestJWTLogin(ZulipTestCase):
             key = settings.JWT_AUTH_KEYS["zulip"]["key"]
             [algorithm] = settings.JWT_AUTH_KEYS["zulip"]["algorithms"]
             web_token = jwt.encode(payload, key, algorithm)
-            data = {"json_web_token": web_token}
+            data = {"token": web_token}
             result = self.client_post("/accounts/login/jwt/", data)
             self.assertEqual(result.status_code, 200)  # This should ideally be not 200.
             self.assert_logged_in_user_id(None)
@@ -5477,7 +5477,7 @@ class TestJWTLogin(ZulipTestCase):
                 [algorithm] = settings.JWT_AUTH_KEYS["acme"]["algorithms"]
                 web_token = jwt.encode(payload, key, algorithm)
 
-                data = {"json_web_token": web_token}
+                data = {"token": web_token}
                 result = self.client_post("/accounts/login/jwt/", data)
                 self.assert_json_error_contains(result, "Invalid subdomain", 404)
                 self.assert_logged_in_user_id(None)
@@ -5490,7 +5490,7 @@ class TestJWTLogin(ZulipTestCase):
                 [algorithm] = settings.JWT_AUTH_KEYS["zulip"]["algorithms"]
                 web_token = jwt.encode(payload, key, algorithm)
 
-                data = {"json_web_token": web_token}
+                data = {"token": web_token}
                 result = self.client_post("/accounts/login/jwt/", data)
                 self.assertEqual(result.status_code, 302)
                 user_profile = self.example_user("hamlet")
